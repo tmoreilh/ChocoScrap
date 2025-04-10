@@ -62,4 +62,7 @@ with open("emails.txt", "w", encoding="utf-8") as f:
 df = pd.DataFrame(results)
 df.to_excel("emails.xlsx", index=False)
 
-print("\n✅ Extraction terminée ! Résultats dans 'emails.txt' et 'emails.xlsx'")
+df = pd.DataFrame(results)
+df.to_csv("emails.csv", index=False)
+
+print("\n✅ Extraction terminée ! Résultats dans 'emails.txt' , 'emails.xlsx' et 'emails.csv'")

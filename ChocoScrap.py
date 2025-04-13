@@ -1,3 +1,40 @@
+# ****************************************************************************** #
+#                                                                                #
+#                              Thomas Moreilhon                                  #
+#                                                                                #
+#                                                                        %%*,    #
+#                                                 *%%&%%%*               (,*/*&, #
+#                      @##               ,&(**************&,            /%,%/,/& #
+#           % #&.&****%.           ,&/*********************&         &/,(*       #
+#         @*,**,/,%*******%   ../&********&/   %#*************% #,,&,,@          #
+#         @***,*,,*&/*******&&**********&  .@@/   (/************%*@/#.           #
+#         *&&&...##,*,##*&/************%  (@@@@@@   %*******@/#**&@@             #
+#                 /**(&/,,#%***********&  &@@@@@@%   %*****%**#**/@@             #
+#                ,/*******%(*,/&(******(. /@@@@@@@   (*****#***%**(@             #
+#                 (*******/***#%*,,&/***(.  %@&@/   %*****%****&**%              #
+#                %*********##****(%,*#***#/      #(*****%*******/,               #
+#                 %********%*..#/*******************************/#               #
+#                 ,(****(%       ,&****************************%*                #
+#                  ,&&#               &/**********************&                  #
+#                                     *&&(***********(&&                         #
+#                                      **,,(       ,/(                           #
+#                                      **,,%       ,*(,                          #
+#                                      **,,&       (,(                           #
+#                                      /*,,&       /*#                           #
+#                                      **,,&       **#                           #
+#                                      /*,,&       (,(                           #
+#                                      **,,&       (,#                           #
+#                                      **,,&       (,#                           #
+#                                       ,*,,&       (,#                          #
+#                                       /*,&       (,,,,,,%,                     #
+#                                       /,,(                                     #
+#                                                                                #
+#   File: my_script.py                                                           #
+#   By: Thomas Moreilhon <thmoreil@student.42.fr>                                #
+#   Created: 2025/04/13                                                          #
+#   Updated: 2025/04/13                                                          #
+# ****************************************************************************** #
+
 import os
 import re
 import time
@@ -84,20 +121,62 @@ def extract_from_facebook(url):
         driver = webdriver.Chrome(options=options)
         driver.get(url)
         time.sleep(5)
+        
+        # Scroll pour charger la page
         for _ in range(3):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)
+        
+        # Parse le contenu de la page avec BeautifulSoup
         soup = BeautifulSoup(driver.page_source, "html.parser")
         driver.quit()
+        
+        # Extraire le texte complet de la page
         text = soup.get_text(separator=' ')
-        emails = re.findall(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b", text)
+        emails = re.findall(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA0-9-.]+\b", text)
         phones = extract_phone_numbers(text)
         linkedins = extract_linkedin_urls(text)
         emails = [e for e in set(emails) if len(e) < 100 and not e.endswith(('.png', '.jpg'))]
-        return emails, phones, linkedins
+
+        # Chercher l'activité directement dans les sections pertinentes
+        activity = "Activité inconnue"
+
+        # Chercher dans la section "À propos" si elle existe
+        about_section = soup.find('div', {'class': 'aboutSection'})  # Section "À propos"
+        if about_section:
+            description = about_section.get_text(separator=" ", strip=True)
+            print("Section À propos trouvée :", description)  # Log du texte trouvé
+            activity = detect_activity(description)  # Passer le texte à detect_activity
+
+        # Si l'activité n'a pas été trouvée, chercher dans les posts récents
+        if activity == "Activité inconnue":
+            posts = soup.find_all('div', {'class': 'userContent'})
+            if posts:
+                for post in posts[:5]:  # Limiter à 5 derniers posts
+                    post_text = post.get_text().lower()
+                    print(f"Post trouvé : {post_text}")  # Log du texte du post
+                    post_activity = detect_activity(post_text)
+                    if post_activity != "Activité inconnue":  # Si une activité est trouvée, l'utiliser
+                        activity = post_activity
+                        break  # Stopper dès qu'une activité est trouvée
+        
+        # Si l'activité est toujours inconnue, rechercher dans d'autres sections comme la bio
+        if activity == "Activité inconnue":
+            bio_section = soup.find('div', {'class': 'bio'})
+            if bio_section:
+                bio_text = bio_section.get_text(separator=" ", strip=True)
+                print(f"Bio trouvée : {bio_text}")  # Log de la bio
+                activity = detect_activity(bio_text)
+
+        # Afficher les résultats de la détection
+        print(f"Activité trouvée : {activity}")
+
+        return emails, phones, linkedins, activity
+
     except Exception as e:
         print(f"[❌ Facebook Selenium] {url} : {e}")
-        return [], [], []
+        return [], [], [], None
+
 
 def validate_email_address(email):
     pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
@@ -165,12 +244,16 @@ def extract_phone_numbers(text, region="FR"):
 
 def extract_email_phone_linkedin(url):
     try:
+        if is_facebook_url(url):
+            return extract_from_facebook(url)
+
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
         response.encoding = response.apparent_encoding
         soup = BeautifulSoup(response.text, "html.parser")
 
         text = soup.get_text()
+
         mailto_links = [a.get("href") for a in soup.find_all("a", href=True) if "mailto:" in a.get("href")]
         mailto_emails = [link.replace("mailto:", "").split("?")[0] for link in mailto_links]
         text_emails = re.findall(r"\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b", text)
@@ -179,7 +262,7 @@ def extract_email_phone_linkedin(url):
 
         valid_emails = [email for email in all_emails if validate_email_address(email)]
         phone_numbers = extract_phone_numbers(text)
-        linkedin_links = list(set([a['href'] for a in soup.find_all('a', href=True) if 'linkedin.com/in/' in a['href']]))
+        linkedin_links = [a.get("href") for a in soup.find_all("a", href=True) if a.get("href") and "linkedin.com" in a.get("href")]
 
         # Nouvelle détection activité
         useful_text = extract_useful_text(soup)
@@ -187,7 +270,9 @@ def extract_email_phone_linkedin(url):
 
         return valid_emails, phone_numbers, linkedin_links, activity
     except Exception as e:
-        return [], [], [], "Erreur"
+        print(f"Erreur lors de l'extraction pour {url}: {e}")
+        # Retourner un tuple avec 4 valeurs même en cas d'erreur
+        return [], [], [], None  #
     
 def read_urls_from_file(file_path):
     _, ext = os.path.splitext(file_path)
@@ -249,7 +334,7 @@ def run_scraping(file_path, status_label, progress_bar, result_box, save_directo
         if linkedins:
             result_box.insert(END, f"💼 {result['LinkedIn']}\n")
         if activity:
-            result_box.insert(END, f"🏷️ Activité : {activity}\n")
+            result_box.insert(END, f"🏷️ {activity}\n")
         result_box.insert(END, "\n")
         result_box.see(END)
 
@@ -278,8 +363,6 @@ def run_scraping(file_path, status_label, progress_bar, result_box, save_directo
 
     from tkinter import messagebox
     messagebox.showinfo("Succès", "Extraction terminée avec succès !")
-
-
 # === Interface Graphique Pastel Chocolat ===
 
 def launch_gui():

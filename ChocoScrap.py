@@ -42,6 +42,7 @@ import pandas as pd
 import requests
 import phonenumbers
 import logging
+from googlesearch import search
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -51,6 +52,13 @@ from PIL import Image, ImageTk
 
 # Initialisation des logs
 logging.basicConfig(filename='rgpd_requests.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+query = "agence marketing bordeaux"
+results = search(query, num_results=20, lang="fr")
+
+with open("resultats_google.txt", "w") as f:
+    for url in results:
+        f.write(url + "\n")
 
 def analyze_rgpd_email(email):
     generic_keywords = ['contact', 'info', 'hello', 'support', 'service', 'commercial', 'admin', 'sales']
@@ -207,13 +215,38 @@ def detect_activity(text):
     text = text.lower()
 
     secteurs = {
-        "Agence de communication": ["communication", "marketing", "réseaux sociaux"],
-        "Cabinet d'avocats": ["avocat", "droit", "juridique", "litige"],
-        "Restaurant": ["restaurant", "cuisine", "menu", "chef", "gastronomie"],
-        "Immobilier": ["immobilier", "location", "appartement", "syndic", "agence"],
-        "Informatique / Développement": ["développement", "web", "application", "logiciel", "site internet"],
+        "Agence de communication": ["communication", "marketing", "réseaux sociaux", "publicité", "branding"],
+        "Cabinet d'avocats": ["avocat", "droit", "juridique", "litige", "conseil"],
+        "Restaurant": ["restaurant", "cuisine", "menu", "chef", "gastronomie","glace","plat","dessert","boisson"],
+        "E-commerce": ["e-commerce", "boutique", "vente en ligne", "produit"],
+        "Immobilier": ["immobilier", "location", "appartement", "syndic", "agence", "maison","habitat","terrain","propriété","habitation"],
+        "Tourisme / Voyage": ["voyage", "tourisme", "hôtel", "séjour", "destination"],
+        "Informatique / Développement": ["développement", "web", "application", "logiciel", "site internet", "technologie", "numérique"],
+        "Finance / Comptabilité": ["finance", "comptabilité", "audit", "investissement", "banque"],
         "Santé / Médical": ["médical", "santé", "clinique", "docteur", "hôpital"],
         "Éducation / Formation": ["formation", "école", "cours", "enseignement", "pédagogie"],
+        "Art / Culture": ["art", "culture", "musée", "exposition", "spectacle"],
+        "Mode / Beauté": ["mode", "beauté", "cosmétique", "vêtements", "accessoires"],
+        "Sport / Loisirs": ["sport", "loisir", "activité physique", "bien-être", "fitness"],
+        "Automobile": ["automobile", "voiture", "moto", "réparation", "garage"],
+        "Énergie / Environnement": ["énergie", "environnement", "écologique", "durable", "développement durable"],
+        "Télécommunications": ["télécommunications", "téléphone", "internet", "réseau", "connexion"],
+        "Agriculture / Agroalimentaire": ["agriculture", "agroalimentaire", "ferme", "produit bio", "cultures"],
+        "Construction / BTP": ["construction", "bâtiment", "chantier", "travaux", "ingénierie"],
+        "Logistique / Transport": ["logistique", "transport", "livraison", "expédition", "entreposage"],
+        "Ressources humaines": ["ressources humaines", "recrutement", "emploi", "formation", "carrière"],
+        "Services à la personne": ["services à la personne", "aide à domicile", "ménage", "garde d'enfants"],
+        "Sécurité": ["sécurité", "protection", "surveillance", "alarme", "sécurisation"],
+        "Média / Presse": ["média", "presse", "journalisme", "actualités", "reportage"],
+        "Musique / Son": ["musique", "son", "studio", "enregistrement", "concert"],
+        "Jeux vidéo": ["jeux vidéo", "gaming", "console", "PC", "jeu en ligne"],
+        "Événementiel": ["événement", "organisation", "séminaire", "conférence", "salon"],
+        "Télévision / Cinéma": ["télévision", "cinéma", "film", "série", "production"],
+        "Photographie": ["photographie", "photo", "photographe", "studio photo", "portrait"],
+        "Blog / Influence": ["blog", "influenceur", "contenu", "réseaux sociaux", "partenariat"],
+        "Artisanat": ["artisan", "fait main", "création", "sur mesure", "atelier"],
+        "Bricolage": ["bricolage", "outils", "matériaux", "réparation", "aménagement"],
+        "Jardinage": ["jardinage", "plantes", "jardin", "paysagiste", "aménagement extérieur"],
     }
 
     for secteur, keywords in secteurs.items():
